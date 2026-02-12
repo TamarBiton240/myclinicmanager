@@ -4,8 +4,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { format, subMonths, startOfWeek, endOfWeek } from "date-fns";
-import { DollarSign, Clock, UserCheck } from "lucide-react";
+import { format } from "date-fns";
+import { DollarSign, UserCheck } from "lucide-react";
 
 const Reports = () => {
   const { user } = useAuth();
@@ -16,7 +16,7 @@ const Reports = () => {
     queryFn: async () => {
       const { data } = await supabase
         .from("appointments")
-        .select("*, clients(full_name)")
+        .select("*, clients(full_name), treatment_areas(area_name, heat_level)")
         .eq("payment_status", "debt")
         .order("scheduled_at", { ascending: false });
       return data ?? [];
@@ -24,38 +24,15 @@ const Reports = () => {
     enabled: !!user,
   });
 
-  // Incomplete summaries this week
-  const { data: incompleteSummaries = [] } = useQuery({
-    queryKey: ["incomplete-week", user?.id],
+  // All treatments for overview
+  const { data: recentTreatments = [] } = useQuery({
+    queryKey: ["recent-treatments", user?.id],
     queryFn: async () => {
-      const now = new Date();
-      const weekStart = startOfWeek(now);
-      const weekEnd = endOfWeek(now);
       const { data } = await supabase
         .from("appointments")
-        .select("*, clients(full_name)")
-        .eq("is_completed", true)
-        .eq("is_summary_signed_off", false)
-        .gte("scheduled_at", weekStart.toISOString())
-        .lte("scheduled_at", weekEnd.toISOString())
-        .order("scheduled_at");
-      return data ?? [];
-    },
-    enabled: !!user,
-  });
-
-  // Clients due for follow-up (3+ months since last visit)
-  const { data: followUps = [] } = useQuery({
-    queryKey: ["follow-ups", user?.id],
-    queryFn: async () => {
-      const threeMonthsAgo = subMonths(new Date(), 3);
-      const { data } = await supabase
-        .from("appointments")
-        .select("*, clients(full_name)")
-        .not("next_reminder_date", "is", null)
-        .lte("next_reminder_date", format(new Date(), "yyyy-MM-dd"))
-        .eq("is_summary_signed_off", true)
-        .order("next_reminder_date");
+        .select("*, clients(full_name), treatment_areas(area_name, heat_level)")
+        .order("scheduled_at", { ascending: false })
+        .limit(50);
       return data ?? [];
     },
     enabled: !!user,
@@ -76,15 +53,12 @@ const Reports = () => {
       <h1 className="text-3xl font-display font-semibold">Reports</h1>
 
       <Tabs defaultValue="debts">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="debts" className="text-xs sm:text-sm">
             <DollarSign className="w-3.5 h-3.5 mr-1" /> Unpaid ({debts.length})
           </TabsTrigger>
-          <TabsTrigger value="incomplete" className="text-xs sm:text-sm">
-            <Clock className="w-3.5 h-3.5 mr-1" /> Incomplete ({incompleteSummaries.length})
-          </TabsTrigger>
-          <TabsTrigger value="followups" className="text-xs sm:text-sm">
-            <UserCheck className="w-3.5 h-3.5 mr-1" /> Follow-ups ({followUps.length})
+          <TabsTrigger value="all" className="text-xs sm:text-sm">
+            <UserCheck className="w-3.5 h-3.5 mr-1" /> Recent ({recentTreatments.length})
           </TabsTrigger>
         </TabsList>
 
@@ -99,7 +73,10 @@ const Reports = () => {
                   <div key={item.id} className="flex items-center justify-between p-3 rounded-lg bg-destructive/5">
                     <div>
                       <p className="font-medium text-sm">{item.clients?.full_name}</p>
-                      <p className="text-xs text-muted-foreground">{format(new Date(item.scheduled_at), "MMM d, yyyy")}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {format(new Date(item.scheduled_at), "MMM d, yyyy")} · {item.treatment_type}
+                        {item.treatment_areas?.length > 0 && ` · ${item.treatment_areas.map((a: any) => a.area_name).join(", ")}`}
+                      </p>
                     </div>
                     <Badge variant="destructive">Debt</Badge>
                   </div>
@@ -109,41 +86,25 @@ const Reports = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="incomplete">
+        <TabsContent value="all">
           <Card>
-            <CardHeader><CardTitle className="text-lg font-display">Incomplete Summaries (This Week)</CardTitle></CardHeader>
+            <CardHeader><CardTitle className="text-lg font-display">Recent Treatments</CardTitle></CardHeader>
             <CardContent>
               <ReportList
-                items={incompleteSummaries}
-                emptyText="All summaries are complete for this week."
+                items={recentTreatments}
+                emptyText="No treatments yet."
                 renderItem={(item) => (
-                  <div key={item.id} className="flex items-center justify-between p-3 rounded-lg bg-warning/10">
+                  <div key={item.id} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
                     <div>
                       <p className="font-medium text-sm">{item.clients?.full_name}</p>
-                      <p className="text-xs text-muted-foreground">{format(new Date(item.scheduled_at), "MMM d, h:mm a")}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {format(new Date(item.scheduled_at), "MMM d, yyyy h:mm a")} · {item.treatment_type}
+                        {item.treatment_areas?.length > 0 && ` · ${item.treatment_areas.map((a: any) => a.area_name).join(", ")}`}
+                      </p>
                     </div>
-                    <Badge className="bg-warning text-primary-foreground">Pending</Badge>
-                  </div>
-                )}
-              />
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="followups">
-          <Card>
-            <CardHeader><CardTitle className="text-lg font-display">Clients Due for Follow-Up</CardTitle></CardHeader>
-            <CardContent>
-              <ReportList
-                items={followUps}
-                emptyText="No clients due for follow-up."
-                renderItem={(item) => (
-                  <div key={item.id} className="flex items-center justify-between p-3 rounded-lg bg-info/10">
-                    <div>
-                      <p className="font-medium text-sm">{item.clients?.full_name}</p>
-                      <p className="text-xs text-muted-foreground">Reminder: {format(new Date(item.next_reminder_date), "MMM d, yyyy")}</p>
-                    </div>
-                    <Badge className="bg-info text-primary-foreground">Due</Badge>
+                    <Badge variant={item.payment_status === "debt" ? "destructive" : "default"}>
+                      {item.payment_status || "—"}
+                    </Badge>
                   </div>
                 )}
               />

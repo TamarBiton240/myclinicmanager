@@ -18,12 +18,7 @@ export type Database = {
         Row: {
           client_id: string
           created_at: string
-          duration_minutes: number | null
           id: string
-          is_completed: boolean | null
-          is_summary_signed_off: boolean | null
-          next_reminder_date: string | null
-          notes: string | null
           payment_status: Database["public"]["Enums"]["payment_status"] | null
           scheduled_at: string
           treatment_type: Database["public"]["Enums"]["treatment_type"]
@@ -33,12 +28,7 @@ export type Database = {
         Insert: {
           client_id: string
           created_at?: string
-          duration_minutes?: number | null
           id?: string
-          is_completed?: boolean | null
-          is_summary_signed_off?: boolean | null
-          next_reminder_date?: string | null
-          notes?: string | null
           payment_status?: Database["public"]["Enums"]["payment_status"] | null
           scheduled_at: string
           treatment_type: Database["public"]["Enums"]["treatment_type"]
@@ -48,12 +38,7 @@ export type Database = {
         Update: {
           client_id?: string
           created_at?: string
-          duration_minutes?: number | null
           id?: string
-          is_completed?: boolean | null
-          is_summary_signed_off?: boolean | null
-          next_reminder_date?: string | null
-          notes?: string | null
           payment_status?: Database["public"]["Enums"]["payment_status"] | null
           scheduled_at?: string
           treatment_type?: Database["public"]["Enums"]["treatment_type"]
@@ -73,33 +58,27 @@ export type Database = {
       clients: {
         Row: {
           created_at: string
-          date_of_birth: string | null
           email: string | null
           full_name: string
           id: string
-          medical_notes: string | null
           phone: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
           created_at?: string
-          date_of_birth?: string | null
           email?: string | null
           full_name: string
           id?: string
-          medical_notes?: string | null
           phone?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
           created_at?: string
-          date_of_birth?: string | null
           email?: string | null
           full_name?: string
           id?: string
-          medical_notes?: string | null
           phone?: string | null
           updated_at?: string
           user_id?: string
@@ -111,28 +90,22 @@ export type Database = {
           appointment_id: string
           area_name: string
           created_at: string
-          heat_level: number | null
+          heat_level: number
           id: string
-          notes: string | null
-          pain_level: number | null
         }
         Insert: {
           appointment_id: string
           area_name: string
           created_at?: string
-          heat_level?: number | null
+          heat_level: number
           id?: string
-          notes?: string | null
-          pain_level?: number | null
         }
         Update: {
           appointment_id?: string
           area_name?: string
           created_at?: string
-          heat_level?: number | null
+          heat_level?: number
           id?: string
-          notes?: string | null
-          pain_level?: number | null
         }
         Relationships: [
           {

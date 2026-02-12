@@ -1,14 +1,17 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { CalendarDays, AlertTriangle, Users, Clock } from "lucide-react";
-import { format, startOfDay, endOfDay, isToday } from "date-fns";
-import { Link } from "react-router-dom";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { CalendarDays, Users, Clock, DollarSign } from "lucide-react";
+import { format, startOfDay, endOfDay, isSameDay } from "date-fns";
 
 const Dashboard = () => {
   const { user } = useAuth();
+  const [showTodayOnly, setShowTodayOnly] = useState(true);
 
   const { data: todayAppointments = [] } = useQuery({
     queryKey: ["today-appointments", user?.id],
@@ -16,7 +19,7 @@ const Dashboard = () => {
       const today = new Date();
       const { data } = await supabase
         .from("appointments")
-        .select("*, clients(full_name)")
+        .select("*, clients(full_name), treatment_areas(area_name, heat_level)")
         .gte("scheduled_at", startOfDay(today).toISOString())
         .lte("scheduled_at", endOfDay(today).toISOString())
         .order("scheduled_at", { ascending: true });
@@ -25,16 +28,11 @@ const Dashboard = () => {
     enabled: !!user,
   });
 
-  const { data: pendingSummaries = [] } = useQuery({
-    queryKey: ["pending-summaries", user?.id],
+  const { data: debtCount = 0 } = useQuery({
+    queryKey: ["debt-count", user?.id],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("appointments")
-        .select("*, clients(full_name)")
-        .eq("is_completed", true)
-        .eq("is_summary_signed_off", false)
-        .order("scheduled_at", { ascending: false });
-      return data ?? [];
+      const { count } = await supabase.from("appointments").select("*", { count: "exact", head: true }).eq("payment_status", "debt");
+      return count ?? 0;
     },
     enabled: !!user,
   });
@@ -64,18 +62,18 @@ const Dashboard = () => {
             </div>
             <div>
               <p className="text-2xl font-semibold">{todayAppointments.length}</p>
-              <p className="text-sm text-muted-foreground">Today's Appointments</p>
+              <p className="text-sm text-muted-foreground">Today's Treatments</p>
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-5 flex items-center gap-4">
             <div className="w-10 h-10 rounded-lg bg-destructive/10 flex items-center justify-center">
-              <AlertTriangle className="w-5 h-5 text-destructive" />
+              <DollarSign className="w-5 h-5 text-destructive" />
             </div>
             <div>
-              <p className="text-2xl font-semibold">{pendingSummaries.length}</p>
-              <p className="text-sm text-muted-foreground">Pending Summaries</p>
+              <p className="text-2xl font-semibold">{debtCount}</p>
+              <p className="text-sm text-muted-foreground">Unpaid Debts</p>
             </div>
           </CardContent>
         </Card>
@@ -94,12 +92,16 @@ const Dashboard = () => {
 
       {/* Today's Schedule */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-lg font-display">Today's Schedule</CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
+          <CardTitle className="text-lg font-display">Today's Clients</CardTitle>
+          <div className="flex items-center gap-2">
+            <Label className="text-sm text-muted-foreground">Today only</Label>
+            <Switch checked={showTodayOnly} onCheckedChange={setShowTodayOnly} />
+          </div>
         </CardHeader>
         <CardContent>
           {todayAppointments.length === 0 ? (
-            <p className="text-muted-foreground text-sm py-4 text-center">No appointments scheduled for today.</p>
+            <p className="text-muted-foreground text-sm py-4 text-center">No treatments scheduled for today.</p>
           ) : (
             <div className="space-y-3">
               {todayAppointments.map((apt: any) => (
@@ -110,47 +112,24 @@ const Dashboard = () => {
                     </div>
                     <div>
                       <p className="font-medium text-sm">{apt.clients?.full_name}</p>
-                      <p className="text-xs text-muted-foreground">{format(new Date(apt.scheduled_at), "h:mm a")}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {format(new Date(apt.scheduled_at), "h:mm a")}
+                        {apt.treatment_areas?.length > 0 && ` · ${apt.treatment_areas.map((a: any) => a.area_name).join(", ")}`}
+                      </p>
                     </div>
                   </div>
-                  <Badge variant={apt.treatment_type === "laser" ? "default" : "secondary"} className={apt.treatment_type === "laser" ? "bg-laser text-primary-foreground" : "bg-electrolysis text-accent-foreground"}>
-                    {apt.treatment_type}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    {apt.payment_status === "debt" && <Badge variant="destructive">Debt</Badge>}
+                    <Badge className={apt.treatment_type === "laser" ? "bg-laser text-primary-foreground" : "bg-electrolysis text-primary-foreground"}>
+                      {apt.treatment_type}
+                    </Badge>
+                  </div>
                 </div>
               ))}
             </div>
           )}
         </CardContent>
       </Card>
-
-      {/* Pending Summaries */}
-      {pendingSummaries.length > 0 && (
-        <Card className="border-destructive/30">
-          <CardHeader>
-            <CardTitle className="text-lg font-display flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-destructive" />
-              Pending Summaries
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {pendingSummaries.map((apt: any) => (
-                <Link
-                  key={apt.id}
-                  to={`/treatment/${apt.id}`}
-                  className="flex items-center justify-between p-3 rounded-lg bg-destructive/5 hover:bg-destructive/10 transition-colors"
-                >
-                  <div>
-                    <p className="font-medium text-sm">{apt.clients?.full_name}</p>
-                    <p className="text-xs text-muted-foreground">{format(new Date(apt.scheduled_at), "MMM d, h:mm a")}</p>
-                  </div>
-                  <Badge variant="destructive">Needs Sign-off</Badge>
-                </Link>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 };

@@ -2,16 +2,14 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Search, MessageCircle, Phone } from "lucide-react";
-import { format } from "date-fns";
+import { Plus, Search, MessageCircle } from "lucide-react";
 
 const Clients = () => {
   const { user } = useAuth();
@@ -19,7 +17,7 @@ const Clients = () => {
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [form, setForm] = useState({ full_name: "", phone: "", email: "", date_of_birth: "", medical_notes: "" });
+  const [form, setForm] = useState({ full_name: "", phone: "", email: "" });
 
   const { data: clients = [], isLoading } = useQuery({
     queryKey: ["clients", user?.id],
@@ -33,16 +31,17 @@ const Clients = () => {
   const addClient = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.from("clients").insert({
-        ...form,
+        full_name: form.full_name,
+        phone: form.phone || null,
+        email: form.email || null,
         user_id: user!.id,
-        date_of_birth: form.date_of_birth || null,
       });
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["clients"] });
       setDialogOpen(false);
-      setForm({ full_name: "", phone: "", email: "", date_of_birth: "", medical_notes: "" });
+      setForm({ full_name: "", phone: "", email: "" });
       toast({ title: "Client added successfully" });
     },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
@@ -81,14 +80,6 @@ const Clients = () => {
                   <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label>Date of Birth</Label>
-                <Input type="date" value={form.date_of_birth} onChange={(e) => setForm({ ...form, date_of_birth: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label>Medical Notes</Label>
-                <Textarea value={form.medical_notes} onChange={(e) => setForm({ ...form, medical_notes: e.target.value })} rows={3} />
-              </div>
               <Button type="submit" className="w-full" disabled={addClient.isPending}>
                 {addClient.isPending ? "Adding..." : "Add Client"}
               </Button>
@@ -99,12 +90,7 @@ const Clients = () => {
 
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input
-          placeholder="Search clients..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="pl-10"
-        />
+        <Input placeholder="Search clients..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
       </div>
 
       <Card>
@@ -115,14 +101,12 @@ const Clients = () => {
                 <TableHead>Name</TableHead>
                 <TableHead className="hidden sm:table-cell">Phone</TableHead>
                 <TableHead className="hidden md:table-cell">Email</TableHead>
-                <TableHead className="hidden lg:table-cell">DOB</TableHead>
-                <TableHead className="hidden lg:table-cell">Medical Notes</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
                     {isLoading ? "Loading..." : "No clients found."}
                   </TableCell>
                 </TableRow>
@@ -140,13 +124,7 @@ const Clients = () => {
                         </div>
                       )}
                     </TableCell>
-                    <TableCell className="hidden md:table-cell text-sm">{client.email}</TableCell>
-                    <TableCell className="hidden lg:table-cell text-sm">
-                      {client.date_of_birth ? format(new Date(client.date_of_birth), "MMM d, yyyy") : "—"}
-                    </TableCell>
-                    <TableCell className="hidden lg:table-cell text-sm max-w-[200px] truncate">
-                      {client.medical_notes || "—"}
-                    </TableCell>
+                    <TableCell className="hidden md:table-cell text-sm">{client.email || "—"}</TableCell>
                   </TableRow>
                 ))
               )}

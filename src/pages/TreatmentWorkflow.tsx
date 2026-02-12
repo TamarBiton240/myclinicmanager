@@ -7,21 +7,18 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, ArrowRight, Check } from "lucide-react";
-import { addMonths, format } from "date-fns";
+import { format } from "date-fns";
 
 const FULL_BODY_AREAS = ["Legs", "Arms", "Back", "Face", "Bikini"];
 
 interface TreatmentArea {
   area_name: string;
   heat_level: string;
-  pain_level: string;
-  notes: string;
 }
 
 const TreatmentWorkflow = () => {
@@ -32,9 +29,8 @@ const TreatmentWorkflow = () => {
   const queryClient = useQueryClient();
   const [step, setStep] = useState(1);
   const [areaMode, setAreaMode] = useState<"single" | "fullbody">("single");
-  const [areas, setAreas] = useState<TreatmentArea[]>([{ area_name: "", heat_level: "", pain_level: "", notes: "" }]);
-  const [paymentStatus, setPaymentStatus] = useState<"paid" | "debt" | "package" | "">("");
-  const [setReminder, setSetReminder] = useState(true);
+  const [areas, setAreas] = useState<TreatmentArea[]>([{ area_name: "", heat_level: "" }]);
+  const [paymentStatus, setPaymentStatus] = useState<"paid" | "debt" | "">("");
 
   const { data: appointment } = useQuery({
     queryKey: ["appointment", id],
@@ -47,9 +43,9 @@ const TreatmentWorkflow = () => {
 
   useEffect(() => {
     if (areaMode === "fullbody") {
-      setAreas(FULL_BODY_AREAS.map((a) => ({ area_name: a, heat_level: "", pain_level: "", notes: "" })));
+      setAreas(FULL_BODY_AREAS.map((a) => ({ area_name: a, heat_level: "" })));
     } else {
-      setAreas([{ area_name: "", heat_level: "", pain_level: "", notes: "" }]);
+      setAreas([{ area_name: "", heat_level: "" }]);
     }
   }, [areaMode]);
 
@@ -57,39 +53,30 @@ const TreatmentWorkflow = () => {
     setAreas((prev) => prev.map((a, i) => (i === index ? { ...a, [field]: value } : a)));
   };
 
-  const addArea = () => setAreas((prev) => [...prev, { area_name: "", heat_level: "", pain_level: "", notes: "" }]);
+  const addArea = () => setAreas((prev) => [...prev, { area_name: "", heat_level: "" }]);
 
   const allAreasValid = areas.every((a) => a.area_name && a.heat_level);
   const canFinish = allAreasValid && paymentStatus !== "";
 
   const finishTreatment = useMutation({
     mutationFn: async () => {
-      // Insert treatment areas
       const areasToInsert = areas.map((a) => ({
         appointment_id: id!,
         area_name: a.area_name,
         heat_level: parseFloat(a.heat_level),
-        pain_level: a.pain_level ? parseInt(a.pain_level) : null,
-        notes: a.notes || null,
       }));
       const { error: areaError } = await supabase.from("treatment_areas").insert(areasToInsert);
       if (areaError) throw areaError;
 
-      // Update appointment
-      const updateData: any = {
-        is_summary_signed_off: true,
-        payment_status: paymentStatus,
-      };
-      if (setReminder) {
-        updateData.next_reminder_date = format(addMonths(new Date(), 3), "yyyy-MM-dd");
-      }
-      const { error: aptError } = await supabase.from("appointments").update(updateData).eq("id", id!);
+      const { error: aptError } = await supabase.from("appointments").update({
+        payment_status: paymentStatus as "paid" | "debt",
+      }).eq("id", id!);
       if (aptError) throw aptError;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["pending-summaries"] });
+      queryClient.invalidateQueries({ queryKey: ["month-appointments"] });
       queryClient.invalidateQueries({ queryKey: ["appointment", id] });
-      toast({ title: "Treatment signed off successfully!" });
+      toast({ title: "Treatment completed successfully!" });
       navigate("/");
     },
     onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
@@ -117,11 +104,8 @@ const TreatmentWorkflow = () => {
 
       {/* Step indicators */}
       <div className="flex items-center gap-2">
-        {[1, 2, 3].map((s) => (
-          <div
-            key={s}
-            className={`flex-1 h-2 rounded-full transition-colors ${s <= step ? "bg-primary" : "bg-muted"}`}
-          />
+        {[1, 2].map((s) => (
+          <div key={s} className={`flex-1 h-2 rounded-full transition-colors ${s <= step ? "bg-primary" : "bg-muted"}`} />
         ))}
       </div>
 
@@ -129,17 +113,19 @@ const TreatmentWorkflow = () => {
       {step === 1 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg font-display">Step 1: Treatment Areas</CardTitle>
+            <CardTitle className="text-lg font-display">Step 1: Treatment Areas & Heat Levels</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center gap-4">
-              <Button variant={areaMode === "single" ? "default" : "outline"} size="sm" onClick={() => setAreaMode("single")}>
-                Custom Areas
-              </Button>
-              <Button variant={areaMode === "fullbody" ? "default" : "outline"} size="sm" onClick={() => setAreaMode("fullbody")}>
-                Full Body
-              </Button>
-            </div>
+            {appointment.treatment_type === "laser" && (
+              <div className="flex items-center gap-4">
+                <Button variant={areaMode === "single" ? "default" : "outline"} size="sm" onClick={() => setAreaMode("single")}>
+                  Custom Areas
+                </Button>
+                <Button variant={areaMode === "fullbody" ? "default" : "outline"} size="sm" onClick={() => setAreaMode("fullbody")}>
+                  Full Body
+                </Button>
+              </div>
+            )}
 
             {areas.map((area, i) => (
               <div key={i} className="p-4 rounded-lg bg-secondary/50 space-y-3">
@@ -147,30 +133,20 @@ const TreatmentWorkflow = () => {
                   <Badge variant="secondary" className="text-xs">Area {i + 1}</Badge>
                   {areaMode === "fullbody" && <span className="font-medium text-sm">{area.area_name}</span>}
                 </div>
-                {areaMode === "single" && (
+                {(areaMode === "single" || appointment.treatment_type === "electrolysis") && (
                   <div className="space-y-1">
                     <Label className="text-xs">Area Name *</Label>
                     <Input value={area.area_name} onChange={(e) => updateArea(i, "area_name", e.target.value)} placeholder="e.g. Upper Lip" />
                   </div>
                 )}
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Heat/Energy Level *</Label>
-                    <Input type="number" value={area.heat_level} onChange={(e) => updateArea(i, "heat_level", e.target.value)} placeholder="e.g. 25" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Pain Level (1-10)</Label>
-                    <Input type="number" min="1" max="10" value={area.pain_level} onChange={(e) => updateArea(i, "pain_level", e.target.value)} placeholder="1-10" />
-                  </div>
-                </div>
                 <div className="space-y-1">
-                  <Label className="text-xs">Notes</Label>
-                  <Textarea value={area.notes} onChange={(e) => updateArea(i, "notes", e.target.value)} rows={2} placeholder="Optional notes..." />
+                  <Label className="text-xs">Heat/Energy Level *</Label>
+                  <Input type="number" value={area.heat_level} onChange={(e) => updateArea(i, "heat_level", e.target.value)} placeholder="e.g. 25" />
                 </div>
               </div>
             ))}
 
-            {areaMode === "single" && (
+            {(areaMode === "single" || appointment.treatment_type === "electrolysis") && (
               <Button variant="outline" size="sm" onClick={addArea}>+ Add Area</Button>
             )}
 
@@ -183,15 +159,15 @@ const TreatmentWorkflow = () => {
         </Card>
       )}
 
-      {/* Step 2: Financials */}
+      {/* Step 2: Payment */}
       {step === 2 && (
         <Card>
           <CardHeader>
             <CardTitle className="text-lg font-display">Step 2: Payment Status</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-3 gap-3">
-              {(["paid", "debt", "package"] as const).map((status) => (
+            <div className="grid grid-cols-2 gap-3">
+              {(["paid", "debt"] as const).map((status) => (
                 <Button
                   key={status}
                   variant={paymentStatus === status ? "default" : "outline"}
@@ -205,33 +181,6 @@ const TreatmentWorkflow = () => {
 
             <div className="flex justify-between pt-4">
               <Button variant="outline" onClick={() => setStep(1)}>
-                <ArrowLeft className="w-4 h-4 mr-1" /> Back
-              </Button>
-              <Button onClick={() => setStep(3)} disabled={!paymentStatus}>
-                Next <ArrowRight className="w-4 h-4 ml-1" />
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Step 3: Retention */}
-      {step === 3 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg font-display">Step 3: Follow-Up</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex items-center justify-between p-4 rounded-lg bg-secondary/50">
-              <div>
-                <p className="font-medium text-sm">Set next treatment reminder</p>
-                <p className="text-xs text-muted-foreground">Auto-set to {format(addMonths(new Date(), 3), "MMMM d, yyyy")}</p>
-              </div>
-              <Switch checked={setReminder} onCheckedChange={setSetReminder} />
-            </div>
-
-            <div className="flex justify-between pt-4">
-              <Button variant="outline" onClick={() => setStep(2)}>
                 <ArrowLeft className="w-4 h-4 mr-1" /> Back
               </Button>
               <Button onClick={() => finishTreatment.mutate()} disabled={!canFinish || finishTreatment.isPending}>
