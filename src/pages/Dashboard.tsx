@@ -1,17 +1,14 @@
-import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { CalendarDays, Users, Clock, DollarSign } from "lucide-react";
-import { format, startOfDay, endOfDay, isSameDay } from "date-fns";
+import { CalendarDays, Users, Clock, DollarSign, UserCheck } from "lucide-react";
+import { format, startOfDay, endOfDay } from "date-fns";
+import { he } from "date-fns/locale";
 
 const Dashboard = () => {
   const { user } = useAuth();
-  const [showTodayOnly, setShowTodayOnly] = useState(true);
 
   const { data: todayAppointments = [] } = useQuery({
     queryKey: ["today-appointments", user?.id],
@@ -46,14 +43,28 @@ const Dashboard = () => {
     enabled: !!user,
   });
 
+  const { data: staffMembers = [] } = useQuery({
+    queryKey: ["staff-members"],
+    queryFn: async () => {
+      const { data } = await supabase.from("profiles").select("user_id, full_name");
+      return data ?? [];
+    },
+    enabled: !!user,
+  });
+
+  // Count appointments per staff for today
+  const staffAppointmentCounts = staffMembers.map((s: any) => ({
+    name: s.full_name || "ללא שם",
+    count: todayAppointments.filter((a: any) => a.staff_member_id === s.user_id).length,
+  })).filter((s) => s.count > 0);
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div>
-        <h1 className="text-3xl font-display font-semibold">Dashboard</h1>
-        <p className="text-muted-foreground mt-1">{format(new Date(), "EEEE, MMMM d, yyyy")}</p>
+        <h1 className="text-3xl font-display font-semibold">לוח בקרה</h1>
+        <p className="text-muted-foreground mt-1">{format(new Date(), "EEEE, d בMMMM yyyy", { locale: he })}</p>
       </div>
 
-      {/* Stats row */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card>
           <CardContent className="p-5 flex items-center gap-4">
@@ -62,7 +73,7 @@ const Dashboard = () => {
             </div>
             <div>
               <p className="text-2xl font-semibold">{todayAppointments.length}</p>
-              <p className="text-sm text-muted-foreground">Today's Treatments</p>
+              <p className="text-sm text-muted-foreground">טיפולים היום</p>
             </div>
           </CardContent>
         </Card>
@@ -73,7 +84,7 @@ const Dashboard = () => {
             </div>
             <div>
               <p className="text-2xl font-semibold">{debtCount}</p>
-              <p className="text-sm text-muted-foreground">Unpaid Debts</p>
+              <p className="text-sm text-muted-foreground">חובות פתוחים</p>
             </div>
           </CardContent>
         </Card>
@@ -84,24 +95,41 @@ const Dashboard = () => {
             </div>
             <div>
               <p className="text-2xl font-semibold">{clientCount}</p>
-              <p className="text-sm text-muted-foreground">Total Clients</p>
+              <p className="text-sm text-muted-foreground">סה"כ לקוחות</p>
             </div>
           </CardContent>
         </Card>
       </div>
 
+      {/* Staff per-day counts */}
+      {staffAppointmentCounts.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-lg font-display flex items-center gap-2">
+              <UserCheck className="w-5 h-5" /> טיפולים היום לפי צוות
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {staffAppointmentCounts.map((s) => (
+                <div key={s.name} className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
+                  <span className="text-sm font-medium">{s.name}</span>
+                  <Badge>{s.count}</Badge>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Today's Schedule */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
-          <CardTitle className="text-lg font-display">Today's Clients</CardTitle>
-          <div className="flex items-center gap-2">
-            <Label className="text-sm text-muted-foreground">Today only</Label>
-            <Switch checked={showTodayOnly} onCheckedChange={setShowTodayOnly} />
-          </div>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-lg font-display">לקוחות היום</CardTitle>
         </CardHeader>
         <CardContent>
           {todayAppointments.length === 0 ? (
-            <p className="text-muted-foreground text-sm py-4 text-center">No treatments scheduled for today.</p>
+            <p className="text-muted-foreground text-sm py-4 text-center">אין טיפולים מתוכננים להיום.</p>
           ) : (
             <div className="space-y-3">
               {todayAppointments.map((apt: any) => (
@@ -113,15 +141,16 @@ const Dashboard = () => {
                     <div>
                       <p className="font-medium text-sm">{apt.clients?.full_name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {format(new Date(apt.scheduled_at), "h:mm a")}
+                        {format(new Date(apt.scheduled_at), "HH:mm")}
                         {apt.treatment_areas?.length > 0 && ` · ${apt.treatment_areas.map((a: any) => a.area_name).join(", ")}`}
+                        {apt.staff_member_id && (() => { const s = staffMembers.find((sm: any) => sm.user_id === apt.staff_member_id); return s ? ` · ${s.full_name}` : ""; })()}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    {apt.payment_status === "debt" && <Badge variant="destructive">Debt</Badge>}
+                    {apt.payment_status === "debt" && <Badge variant="destructive">חוב</Badge>}
                     <Badge className={apt.treatment_type === "laser" ? "bg-laser text-primary-foreground" : "bg-electrolysis text-primary-foreground"}>
-                      {apt.treatment_type}
+                      {apt.treatment_type === "laser" ? "לייזר" : "אלקטרוליזה"}
                     </Badge>
                   </div>
                 </div>
