@@ -42,9 +42,9 @@ const Clients = () => {
       queryClient.invalidateQueries({ queryKey: ["clients"] });
       setDialogOpen(false);
       setForm({ full_name: "", phone: "", email: "" });
-      toast({ title: "Client added successfully" });
+      toast({ title: "לקוח נוסף בהצלחה" });
     },
-    onError: (e: any) => toast({ title: "Error", description: e.message, variant: "destructive" }),
+    onError: (e: any) => toast({ title: "שגיאה", description: e.message, variant: "destructive" }),
   });
 
   const filtered = clients.filter((c: any) =>
@@ -58,30 +58,30 @@ const Clients = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex items-center justify-between flex-wrap gap-4">
-        <h1 className="text-3xl font-display font-semibold">Clients</h1>
+        <h1 className="text-3xl font-display font-semibold">לקוחות</h1>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button><Plus className="w-4 h-4 mr-2" />Add Client</Button>
+            <Button><Plus className="w-4 h-4 ml-2" />לקוח חדש</Button>
           </DialogTrigger>
           <DialogContent>
-            <DialogHeader><DialogTitle className="font-display">New Client</DialogTitle></DialogHeader>
+            <DialogHeader><DialogTitle className="font-display">לקוח חדש</DialogTitle></DialogHeader>
             <form onSubmit={(e) => { e.preventDefault(); addClient.mutate(); }} className="space-y-4">
               <div className="space-y-2">
-                <Label>Full Name *</Label>
+                <Label>שם מלא *</Label>
                 <Input value={form.full_name} onChange={(e) => setForm({ ...form, full_name: e.target.value })} required />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Phone</Label>
-                  <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+1234567890" />
+                  <Label>טלפון</Label>
+                  <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+972..." />
                 </div>
                 <div className="space-y-2">
-                  <Label>Email</Label>
+                  <Label>אימייל</Label>
                   <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
                 </div>
               </div>
               <Button type="submit" className="w-full" disabled={addClient.isPending}>
-                {addClient.isPending ? "Adding..." : "Add Client"}
+                {addClient.isPending ? "מוסיף..." : "הוסף לקוח"}
               </Button>
             </form>
           </DialogContent>
@@ -89,8 +89,8 @@ const Clients = () => {
       </div>
 
       <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input placeholder="Search clients..." value={search} onChange={(e) => setSearch(e.target.value)} className="pl-10" />
+        <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <Input placeholder="חיפוש לקוחות..." value={search} onChange={(e) => setSearch(e.target.value)} className="pr-10" />
       </div>
 
       <Card>
@@ -98,16 +98,16 @@ const Clients = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead className="hidden sm:table-cell">Phone</TableHead>
-                <TableHead className="hidden md:table-cell">Email</TableHead>
+                <TableHead>שם</TableHead>
+                <TableHead className="hidden sm:table-cell">טלפון</TableHead>
+                <TableHead className="hidden md:table-cell">אימייל</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
-                    {isLoading ? "Loading..." : "No clients found."}
+                    {isLoading ? "טוען..." : "לא נמצאו לקוחות."}
                   </TableCell>
                 </TableRow>
               ) : (

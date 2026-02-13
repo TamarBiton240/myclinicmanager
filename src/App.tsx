@@ -11,13 +11,14 @@ import Clients from "@/pages/Clients";
 import CalendarView from "@/pages/CalendarView";
 import TreatmentWorkflow from "@/pages/TreatmentWorkflow";
 import Reports from "@/pages/Reports";
+import Settings from "@/pages/Settings";
 import NotFound from "@/pages/NotFound";
 
 const queryClient = new QueryClient();
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
-  if (loading) return <div className="min-h-screen flex items-center justify-center"><p className="text-muted-foreground">Loading...</p></div>;
+  if (loading) return <div className="min-h-screen flex items-center justify-center"><p className="text-muted-foreground">טוען...</p></div>;
   if (!user) return <Navigate to="/auth" replace />;
   return <AppLayout>{children}</AppLayout>;
 };
@@ -43,6 +44,7 @@ const App = () => (
             <Route path="/calendar" element={<ProtectedRoute><CalendarView /></ProtectedRoute>} />
             <Route path="/treatment/:id" element={<ProtectedRoute><TreatmentWorkflow /></ProtectedRoute>} />
             <Route path="/reports" element={<ProtectedRoute><Reports /></ProtectedRoute>} />
+            <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

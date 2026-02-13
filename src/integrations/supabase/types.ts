@@ -21,6 +21,7 @@ export type Database = {
           id: string
           payment_status: Database["public"]["Enums"]["payment_status"] | null
           scheduled_at: string
+          staff_member_id: string | null
           treatment_type: Database["public"]["Enums"]["treatment_type"]
           updated_at: string
           user_id: string
@@ -31,6 +32,7 @@ export type Database = {
           id?: string
           payment_status?: Database["public"]["Enums"]["payment_status"] | null
           scheduled_at: string
+          staff_member_id?: string | null
           treatment_type: Database["public"]["Enums"]["treatment_type"]
           updated_at?: string
           user_id: string
@@ -41,6 +43,7 @@ export type Database = {
           id?: string
           payment_status?: Database["public"]["Enums"]["payment_status"] | null
           scheduled_at?: string
+          staff_member_id?: string | null
           treatment_type?: Database["public"]["Enums"]["treatment_type"]
           updated_at?: string
           user_id?: string
@@ -54,6 +57,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      body_areas_config: {
+        Row: {
+          area_name: string
+          created_at: string
+          id: string
+          is_active: boolean
+          sort_order: number
+        }
+        Insert: {
+          area_name: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          sort_order?: number
+        }
+        Update: {
+          area_name?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          sort_order?: number
+        }
+        Relationships: []
       }
       clients: {
         Row: {
@@ -82,6 +109,84 @@ export type Database = {
           phone?: string | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      clinic_settings: {
+        Row: {
+          id: string
+          setting_key: string
+          setting_value: Json
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          setting_key: string
+          setting_value?: Json
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          setting_key?: string
+          setting_value?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          full_name: string
+          id: string
+          phone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          full_name?: string
+          id?: string
+          phone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          full_name?: string
+          id?: string
+          phone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      staff_working_hours: {
+        Row: {
+          created_at: string
+          day_of_week: number
+          end_time: string
+          id: string
+          is_working: boolean
+          staff_user_id: string
+          start_time: string
+        }
+        Insert: {
+          created_at?: string
+          day_of_week: number
+          end_time?: string
+          id?: string
+          is_working?: boolean
+          staff_user_id: string
+          start_time?: string
+        }
+        Update: {
+          created_at?: string
+          day_of_week?: number
+          end_time?: string
+          id?: string
+          is_working?: boolean
+          staff_user_id?: string
+          start_time?: string
         }
         Relationships: []
       }
@@ -117,14 +222,39 @@ export type Database = {
           },
         ]
       }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
+      app_role: "admin" | "staff"
       payment_status: "paid" | "debt" | "package"
       treatment_type: "laser" | "electrolysis"
     }
@@ -254,6 +384,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["admin", "staff"],
       payment_status: ["paid", "debt", "package"],
       treatment_type: ["laser", "electrolysis"],
     },
