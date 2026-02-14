@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { useHeatHistory } from "@/hooks/useHeatHistory";
+import { validateHeatLevel } from "@/lib/validateHeatLevel";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -144,10 +145,10 @@ const CalendarView = () => {
       if (error) throw error;
 
       if (form.treatment_type === "laser" && laserAreas.length > 0) {
-        const areas = laserAreas.map((a) => ({ appointment_id: apt.id, area_name: a.area_name, heat_level: parseFloat(a.heat_level) }));
+        const areas = laserAreas.map((a) => ({ appointment_id: apt.id, area_name: a.area_name, heat_level: validateHeatLevel(a.heat_level) }));
         await supabase.from("treatment_areas").insert(areas);
       } else {
-        await supabase.from("treatment_areas").insert({ appointment_id: apt.id, area_name: form.area, heat_level: parseFloat(form.heat_level) });
+        await supabase.from("treatment_areas").insert({ appointment_id: apt.id, area_name: form.area, heat_level: validateHeatLevel(form.heat_level) });
       }
     },
     onSuccess: () => {
@@ -163,7 +164,7 @@ const CalendarView = () => {
     mutationFn: async () => {
       if (!selectedAppointment) return;
       await supabase.from("treatment_areas").delete().eq("appointment_id", selectedAppointment.id);
-      const areas = editAreas.map((a) => ({ appointment_id: selectedAppointment.id, area_name: a.area_name, heat_level: parseFloat(a.heat_level) }));
+      const areas = editAreas.map((a) => ({ appointment_id: selectedAppointment.id, area_name: a.area_name, heat_level: validateHeatLevel(a.heat_level) }));
       await supabase.from("treatment_areas").insert(areas);
     },
     onSuccess: () => {
