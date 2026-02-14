@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { validateHeatLevel } from "@/lib/validateHeatLevel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -66,7 +67,7 @@ const TreatmentWorkflow = () => {
 
   const finishTreatment = useMutation({
     mutationFn: async () => {
-      const areasToInsert = areas.map((a) => ({ appointment_id: id!, area_name: a.area_name, heat_level: parseFloat(a.heat_level) }));
+      const areasToInsert = areas.map((a) => ({ appointment_id: id!, area_name: a.area_name, heat_level: validateHeatLevel(a.heat_level) }));
       const { error: areaError } = await supabase.from("treatment_areas").insert(areasToInsert);
       if (areaError) throw areaError;
       const { error: aptError } = await supabase.from("appointments").update({ payment_status: paymentStatus as "paid" | "debt" }).eq("id", id!);
