@@ -13,8 +13,14 @@ import TreatmentWorkflow from "@/pages/TreatmentWorkflow";
 import Reports from "@/pages/Reports";
 import Settings from "@/pages/Settings";
 import NotFound from "@/pages/NotFound";
+import { useThemeColor } from "@/hooks/useThemeColor";
 
 const queryClient = new QueryClient();
+
+const ThemeLoader = () => {
+  useThemeColor();
+  return null;
+};
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
@@ -37,6 +43,7 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <AuthProvider>
+          <ThemeLoader />
           <Routes>
             <Route path="/auth" element={<AuthRoute />} />
             <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />

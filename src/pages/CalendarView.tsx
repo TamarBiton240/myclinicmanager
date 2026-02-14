@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { useHeatHistory } from "@/hooks/useHeatHistory";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,8 +12,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
-import { ChevronLeft, ChevronRight, Plus, Filter } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Filter, History } from "lucide-react";
 import {
   format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay,
   addMonths, subMonths, startOfWeek, endOfWeek, addDays, startOfDay, endOfDay,
@@ -100,6 +102,27 @@ const CalendarView = () => {
     },
     enabled: !!user,
   });
+
+  const { data: staffWorkingHours = [] } = useQuery({
+    queryKey: ["all-working-hours"],
+    queryFn: async () => {
+      const { data } = await supabase.from("staff_working_hours").select("*");
+      return data ?? [];
+    },
+    enabled: !!user,
+  });
+
+  const { data: heatHistory = [] } = useHeatHistory(form.client_id || undefined);
+
+  const getStaffAvailability = (staffUserId: string, dayOfWeek: number, hour: number) => {
+    const wh = staffWorkingHours.find(
+      (h: any) => h.staff_user_id === staffUserId && h.day_of_week === dayOfWeek
+    );
+    if (!wh || !wh.is_working) return false;
+    const startHour = parseInt(wh.start_time?.slice(0, 2) || "0");
+    const endHour = parseInt(wh.end_time?.slice(0, 2) || "0");
+    return hour >= startHour && hour < endHour;
+  };
 
   const filteredAppointments = appointments.filter((a: any) => {
     if (filterType !== "all" && a.treatment_type !== filterType) return false;
@@ -242,18 +265,26 @@ const CalendarView = () => {
                 <Input type="datetime-local" value={form.scheduled_at} onChange={(e) => setForm({ ...form, scheduled_at: e.target.value })} required />
               </div>
 
-              {form.treatment_type === "electrolysis" && (
+              {form.treatment_type === "electrolysis" && (() => {
+                const prevHeat = heatHistory.find((h) => h.area_name === form.area);
+                return (
                 <div className="space-y-3 p-3 rounded-lg bg-secondary/50">
                   <div className="space-y-2">
                     <Label>אזור *</Label>
                     <Input value={form.area} onChange={(e) => setForm({ ...form, area: e.target.value })} placeholder="למשל שפה עליונה" />
+                    {prevHeat && (
+                      <Badge variant="outline" className="text-[10px] gap-1 mt-1">
+                        <History className="w-3 h-3" /> חום קודם: {prevHeat.heat_level}
+                      </Badge>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label>רמת חום/אנרגיה *</Label>
-                    <Input type="number" value={form.heat_level} onChange={(e) => setForm({ ...form, heat_level: e.target.value })} placeholder="למשל 25" />
+                    <Input type="number" value={form.heat_level} onChange={(e) => setForm({ ...form, heat_level: e.target.value })} placeholder={prevHeat ? `קודם: ${prevHeat.heat_level}` : "למשל 25"} />
                   </div>
                 </div>
-              )}
+                );
+              })()}
 
               {form.treatment_type === "laser" && (
                 <div className="space-y-3">
@@ -264,22 +295,42 @@ const CalendarView = () => {
                       <Switch checked={useFullBody} onCheckedChange={toggleFullBody} />
                     </div>
                   </div>
-                  {laserAreas.map((area, i) => (
+                  {laserAreas.map((area, i) => {
+                    const prevHeat = heatHistory.find((h) => h.area_name === area.area_name);
+                    return (
                     <div key={i} className="p-3 rounded-lg bg-secondary/50 space-y-2">
                       {useFullBody ? (
-                        <p className="font-medium text-sm">{area.area_name}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-sm">{area.area_name}</p>
+                          {prevHeat && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Badge variant="outline" className="text-[10px] gap-1 cursor-help">
+                                  <History className="w-3 h-3" /> {prevHeat.heat_level}
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent>רמת חום קודמת: {prevHeat.heat_level}</TooltipContent>
+                            </Tooltip>
+                          )}
+                        </div>
                       ) : (
                         <div className="space-y-1">
                           <Label className="text-xs">שם אזור *</Label>
                           <Input value={area.area_name} onChange={(e) => { const u = [...laserAreas]; u[i].area_name = e.target.value; setLaserAreas(u); }} placeholder="למשל רגליים" />
+                          {prevHeat && (
+                            <Badge variant="outline" className="text-[10px] gap-1 mt-1">
+                              <History className="w-3 h-3" /> חום קודם: {prevHeat.heat_level}
+                            </Badge>
+                          )}
                         </div>
                       )}
                       <div className="space-y-1">
                         <Label className="text-xs">רמת חום/אנרגיה *</Label>
-                        <Input type="number" value={area.heat_level} onChange={(e) => { const u = [...laserAreas]; u[i].heat_level = e.target.value; setLaserAreas(u); }} placeholder="למשל 25" />
+                        <Input type="number" value={area.heat_level} onChange={(e) => { const u = [...laserAreas]; u[i].heat_level = e.target.value; setLaserAreas(u); }} placeholder={prevHeat ? `קודם: ${prevHeat.heat_level}` : "למשל 25"} />
                       </div>
                     </div>
-                  ))}
+                    );
+                  })}
                   {!useFullBody && (
                     <Button type="button" variant="outline" size="sm" onClick={() => setLaserAreas([...laserAreas, { area_name: "", heat_level: "" }])}>
                       + הוסף אזור
@@ -423,8 +474,9 @@ const CalendarView = () => {
                       if (s.user_id && a.staff_member_id !== s.user_id) return false;
                       return true;
                     });
+                    const isAvailable = s.user_id ? getStaffAvailability(s.user_id, currentDate.getDay(), hour) : true;
                     return (
-                      <div key={s.user_id || "all"} className="min-h-[60px] p-1 border-r border-border last:border-r-0">
+                      <div key={s.user_id || "all"} className={`min-h-[60px] p-1 border-r border-border last:border-r-0 ${!isAvailable ? "bg-muted/50 opacity-50" : ""}`}>
                         {hourAppts.map((apt: any) => (
                           <button
                             key={apt.id}

@@ -11,7 +11,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2, UserCog, Scissors, Palette } from "lucide-react";
+import { useThemeColor, COLOR_PRESETS } from "@/hooks/useThemeColor";
+import { Plus, Trash2, UserCog, Scissors, Palette, Check } from "lucide-react";
 
 const DAY_NAMES = ["ראשון", "שני", "שלישי", "רביעי", "חמישי", "שישי", "שבת"];
 
@@ -19,6 +20,7 @@ const Settings = () => {
   const { user, role } = useAuth();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { primaryColor, updateColor } = useThemeColor();
 
   // Body areas
   const { data: bodyAreas = [] } = useQuery({
@@ -93,9 +95,10 @@ const Settings = () => {
       <h1 className="text-3xl font-display font-semibold">הגדרות</h1>
 
       <Tabs defaultValue="staff">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="staff"><UserCog className="w-3.5 h-3.5 ml-1" /> צוות</TabsTrigger>
           <TabsTrigger value="areas"><Scissors className="w-3.5 h-3.5 ml-1" /> אזורי גוף</TabsTrigger>
+          <TabsTrigger value="theme"><Palette className="w-3.5 h-3.5 ml-1" /> עיצוב</TabsTrigger>
         </TabsList>
 
         <TabsContent value="staff" className="space-y-4">
@@ -205,6 +208,36 @@ const Settings = () => {
                   </div>
                 ))}
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="theme" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg font-display">צבע ראשי</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+                {COLOR_PRESETS.map((preset) => (
+                  <button
+                    key={preset.hsl}
+                    onClick={() => updateColor.mutate(preset.hsl)}
+                    className="flex flex-col items-center gap-2 group"
+                  >
+                    <div
+                      className={`w-12 h-12 rounded-xl border-2 transition-all flex items-center justify-center ${
+                        primaryColor === preset.hsl ? "border-foreground scale-110 shadow-lg" : "border-transparent hover:scale-105"
+                      }`}
+                      style={{ backgroundColor: `hsl(${preset.hsl})` }}
+                    >
+                      {primaryColor === preset.hsl && <Check className="w-5 h-5 text-white" />}
+                    </div>
+                    <span className="text-xs text-muted-foreground">{preset.name}</span>
+                  </button>
+                ))}
+              </div>
+              {updateColor.isPending && <p className="text-sm text-muted-foreground">שומר...</p>}
             </CardContent>
           </Card>
         </TabsContent>
