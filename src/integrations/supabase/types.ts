@@ -19,9 +19,15 @@ export type Database = {
           client_id: string
           created_at: string
           id: string
+          notes: string | null
+          payment_amount: number | null
           payment_status: Database["public"]["Enums"]["payment_status"] | null
+          plan_id: string | null
+          reminder_date: string | null
+          reminder_requested: boolean | null
           scheduled_at: string
           staff_member_id: string | null
+          status: string | null
           treatment_type: Database["public"]["Enums"]["treatment_type"]
           updated_at: string
           user_id: string
@@ -30,9 +36,15 @@ export type Database = {
           client_id: string
           created_at?: string
           id?: string
+          notes?: string | null
+          payment_amount?: number | null
           payment_status?: Database["public"]["Enums"]["payment_status"] | null
+          plan_id?: string | null
+          reminder_date?: string | null
+          reminder_requested?: boolean | null
           scheduled_at: string
           staff_member_id?: string | null
+          status?: string | null
           treatment_type: Database["public"]["Enums"]["treatment_type"]
           updated_at?: string
           user_id: string
@@ -41,9 +53,15 @@ export type Database = {
           client_id?: string
           created_at?: string
           id?: string
+          notes?: string | null
+          payment_amount?: number | null
           payment_status?: Database["public"]["Enums"]["payment_status"] | null
+          plan_id?: string | null
+          reminder_date?: string | null
+          reminder_requested?: boolean | null
           scheduled_at?: string
           staff_member_id?: string | null
+          status?: string | null
           treatment_type?: Database["public"]["Enums"]["treatment_type"]
           updated_at?: string
           user_id?: string
@@ -56,11 +74,19 @@ export type Database = {
             referencedRelation: "clients"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "appointments_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "treatment_plans"
+            referencedColumns: ["id"]
+          },
         ]
       }
       body_areas_config: {
         Row: {
           area_name: string
+          color: string | null
           created_at: string
           id: string
           is_active: boolean
@@ -68,6 +94,7 @@ export type Database = {
         }
         Insert: {
           area_name: string
+          color?: string | null
           created_at?: string
           id?: string
           is_active?: boolean
@@ -75,6 +102,7 @@ export type Database = {
         }
         Update: {
           area_name?: string
+          color?: string | null
           created_at?: string
           id?: string
           is_active?: boolean
@@ -82,12 +110,52 @@ export type Database = {
         }
         Relationships: []
       }
+      client_plans: {
+        Row: {
+          client_id: string
+          created_at: string
+          id: string
+          is_active: boolean | null
+          plan_id: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          plan_id: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          plan_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_plans_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_plans_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "treatment_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           created_at: string
           email: string | null
           full_name: string
           id: string
+          notes: string | null
           phone: string | null
           updated_at: string
           user_id: string
@@ -97,6 +165,7 @@ export type Database = {
           email?: string | null
           full_name: string
           id?: string
+          notes?: string | null
           phone?: string | null
           updated_at?: string
           user_id: string
@@ -106,6 +175,7 @@ export type Database = {
           email?: string | null
           full_name?: string
           id?: string
+          notes?: string | null
           phone?: string | null
           updated_at?: string
           user_id?: string
@@ -135,25 +205,31 @@ export type Database = {
       }
       profiles: {
         Row: {
+          color: string | null
           created_at: string
           full_name: string
           id: string
+          is_active: boolean | null
           phone: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          color?: string | null
           created_at?: string
           full_name?: string
           id?: string
+          is_active?: boolean | null
           phone?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          color?: string | null
           created_at?: string
           full_name?: string
           id?: string
+          is_active?: boolean | null
           phone?: string | null
           updated_at?: string
           user_id?: string
@@ -197,6 +273,8 @@ export type Database = {
           created_at: string
           heat_level: number
           id: string
+          pain_level: number | null
+          treatment_number: number | null
         }
         Insert: {
           appointment_id: string
@@ -204,6 +282,8 @@ export type Database = {
           created_at?: string
           heat_level: number
           id?: string
+          pain_level?: number | null
+          treatment_number?: number | null
         }
         Update: {
           appointment_id?: string
@@ -211,6 +291,8 @@ export type Database = {
           created_at?: string
           heat_level?: number
           id?: string
+          pain_level?: number | null
+          treatment_number?: number | null
         }
         Relationships: [
           {
@@ -221,6 +303,72 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      treatment_plan_areas: {
+        Row: {
+          area_id: string
+          id: string
+          plan_id: string
+        }
+        Insert: {
+          area_id: string
+          id?: string
+          plan_id: string
+        }
+        Update: {
+          area_id?: string
+          id?: string
+          plan_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "treatment_plan_areas_area_id_fkey"
+            columns: ["area_id"]
+            isOneToOne: false
+            referencedRelation: "body_areas_config"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "treatment_plan_areas_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "treatment_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      treatment_plans: {
+        Row: {
+          color: string | null
+          created_at: string
+          id: string
+          is_active: boolean | null
+          name: string
+          price: number | null
+          treatment_type: Database["public"]["Enums"]["treatment_type"]
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          price?: number | null
+          treatment_type: Database["public"]["Enums"]["treatment_type"]
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          price?: number | null
+          treatment_type?: Database["public"]["Enums"]["treatment_type"]
+          updated_at?: string
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
@@ -255,7 +403,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "staff"
-      payment_status: "paid" | "debt" | "package"
+      payment_status: "paid" | "debt" | "package" | "partial"
       treatment_type: "laser" | "electrolysis"
     }
     CompositeTypes: {
@@ -385,7 +533,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "staff"],
-      payment_status: ["paid", "debt", "package"],
+      payment_status: ["paid", "debt", "package", "partial"],
       treatment_type: ["laser", "electrolysis"],
     },
   },
